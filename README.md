@@ -52,3 +52,7 @@ xhs-video-skills/
 | 需要 AI 生成 B-roll | D runcomfy 等生成模型（付费） |
 
 命令逐步见 [references/04-pipelines.md](references/04-pipelines.md)。
+
+## 许可
+
+[MIT](LICENSE)
