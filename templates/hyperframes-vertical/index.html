@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <title>小红书带货竖屏模板 · 五幕</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      /* ============================================================
+         换商品只改这里：--accent 与五幕文案。
+         托福 #1B6B5F ｜ 雅思 #B03A2E ｜ GRE #2F4A9B ｜ PPT #2F4A9B
+         幕的时间在 <body> 的 data-start / data-duration 与脚本末尾的 S 表里。
+         ============================================================ */
+      :root {
+        --accent: #1b6b5f;
+        --paper: #fbfaf7;
+        --ink: #14161a;
+        --muted: #5c636b;
+        --line: #e4e1da;
+        --tag: #ffd23f;
+        --serif: "Songti SC", "Source Han Serif SC", "Noto Serif SC", serif;
+        --sans: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+        --mono: "SF Mono", Menlo, "PingFang SC", monospace;
+      }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body {
+        width: 1080px; height: 1920px; overflow: hidden;
+        background: var(--paper); color: var(--ink); font-family: var(--sans);
+        -webkit-font-smoothing: antialiased;
+      }
+      #root { position: relative; width: 1080px; height: 1920px; overflow: hidden; background: var(--paper); }
+
+      /* 全程存在的底：细网格 + 顶部主色条（不带 data-start，所以自己定位） */
+      .paper {
+        position: absolute; inset: 0; opacity: 0.6;
+        background-image: linear-gradient(var(--line) 1px, transparent 1px),
+          linear-gradient(90deg, var(--line) 1px, transparent 1px);
+        background-size: 60px 60px;
+      }
+      .bar { position: absolute; top: 0; left: 0; right: 0; height: 14px; background: var(--accent); }
+      .foot {
+        position: absolute; left: 0; right: 0; bottom: 470px; text-align: center;
+        font-family: "Times New Roman", serif; font-size: 22px; letter-spacing: 0.18em; color: var(--muted);
+      }
+
+      /* 幕：安全区 上 240 / 下 460 / 左右 100 */
+      .clip { position: absolute; inset: 0; }
+      .scene-content {
+        width: 100%; height: 100%; padding: 240px 100px 460px;
+        display: flex; flex-direction: column; justify-content: center; gap: 40px;
+      }
+      .eyebrow { font-size: 30px; letter-spacing: 0.3em; color: var(--muted); font-weight: 600; }
+      .eyebrow b { color: var(--accent); font-weight: 700; }
+      .h1 { font-family: var(--serif); font-weight: 900; font-size: 168px; line-height: 1.06; letter-spacing: -0.01em; }
+      .h1 .line { display: block; }
+      .h2 { font-family: var(--serif); font-weight: 900; font-size: 96px; line-height: 1.15; }
+      .sub { font-size: 50px; line-height: 1.45; color: var(--ink); max-width: 880px; }
+      .tag {
+        position: absolute; right: 110px; top: 300px;
+        writing-mode: vertical-rl; background: var(--tag); color: var(--ink);
+        font-family: var(--serif); font-weight: 900; font-size: 56px; letter-spacing: 0.2em;
+        padding: 30px 16px; transform-origin: center;
+      }
+
+      /* 第二幕：要点行 */
+      .rows { display: flex; flex-direction: column; gap: 34px; }
+      .row { display: flex; align-items: center; gap: 28px; font-size: 54px; line-height: 1.3; }
+      .row .mark {
+        flex: 0 0 84px; height: 84px; border-radius: 16px; display: grid; place-items: center;
+        font-family: var(--serif); font-weight: 900; font-size: 52px; color: #fff; background: var(--muted);
+      }
+      .row.yes .mark { background: var(--accent); }
+      .row.no .text { text-decoration: line-through; color: var(--muted); }
+
+      /* 第三幕：终端卡（放真实屏录时用 <video> 替换 .term） */
+      .term {
+        background: #1b1e23; color: #e9ecef; border-radius: 28px; padding: 44px 46px 52px;
+        font-family: var(--mono); font-size: 36px; line-height: 1.75;
+        box-shadow: 0 30px 80px rgba(20, 22, 26, 0.25);
+      }
+      .term .dots { display: flex; gap: 14px; margin-bottom: 26px; }
+      .term .dots i { width: 22px; height: 22px; border-radius: 50%; background: #3c4249; display: block; }
+      .term .dots i:first-child { background: #ff5f57; }
+      .term .dots i:nth-child(2) { background: #febc2e; }
+      .term .dots i:nth-child(3) { background: #28c840; }
+      .term .ln { display: block; white-space: nowrap; overflow: hidden; }
+      .term .ln.cmd { color: #9ad8c9; }
+      .term .ln.ok::before { content: "✔ "; color: #28c840; }
+
+      /* 第四幕：卖点 chip */
+      .chips { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+      .chip {
+        border: 3px solid var(--ink); border-radius: 22px; padding: 38px 30px;
+        font-family: var(--serif); font-weight: 900; font-size: 48px; line-height: 1.3; text-align: center;
+        background: #fff;
+      }
+      .chip.hi { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+      /* 第五幕：价格块 */
+      .price { display: flex; align-items: baseline; gap: 30px; }
+      .price .now { font-family: var(--serif); font-weight: 900; font-size: 240px; color: var(--accent); line-height: 1; }
+      .price .now .cur { font-family: var(--sans); font-style: normal; font-weight: 700; font-size: 0.42em; margin-right: 10px; vertical-align: 0.18em; }
+      .price .old { font-size: 56px; color: var(--muted); text-decoration: line-through; }
+      .cta {
+        display: inline-block; align-self: flex-start; background: var(--ink); color: #fff;
+        font-size: 54px; font-weight: 700; padding: 30px 46px; border-radius: 18px;
+      }
+      .compat { font-size: 34px; color: var(--muted); letter-spacing: 0.06em; }
+      .legal { font-size: 30px; color: var(--muted); }
+      .rule { height: 3px; background: var(--line); }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="32" data-width="1080" data-height="1920">
+      <div class="paper"></div>
+      <div class="bar"></div>
+      <div class="foot">TOEFL-WRITING-REVIEW-SKILLS</div>
+
+      <!-- 第一幕 · 钩子（0–4.0s） -->
+      <section id="s1" class="clip" data-start="0" data-duration="4" data-track-index="1">
+        <div class="scene-content">
+          <div class="eyebrow">SKILL 技能包 · <b>TOEFL</b> 写作批改考官</div>
+          <h1 class="h1"><span class="line">托福写作</span><span class="line">改版了</span></h1>
+          <p class="sub">2026 年 1 月 21 日起，综合写作、独立写作已从真考移除。</p>
+        </div>
+        <div class="tag">提分神器</div>
+      </section>
+
+      <!-- 第二幕 · 放大痛点（3.6–9.5s） -->
+      <section id="s2" class="clip" data-start="3.6" data-duration="5.9" data-track-index="2">
+        <div class="scene-content">
+          <h2 class="h2">你手里的 TPO<br />一半已经不考了</h2>
+          <div class="rows">
+            <div class="row no"><span class="mark">✕</span><span class="text">综合写作（读 + 听 + 写）</span></div>
+            <div class="row no"><span class="mark">✕</span><span class="text">独立写作长文</span></div>
+            <div class="row yes"><span class="mark">✓</span><span class="text">现在考：组句 · 写邮件 · 学术讨论</span></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 第三幕 · 演示（9.1–21.5s）。要放真实屏录，看同目录 README.md 的「替换为真实屏录」。 -->
+      <section id="s3" class="clip" data-start="9.1" data-duration="12.4" data-track-index="3">
+        <div class="scene-content">
+          <h2 class="h2">一句话开工</h2>
+          <div class="term">
+            <div class="dots"><i></i><i></i><i></i></div>
+            <span class="ln cmd">$ claude</span>
+            <span class="ln cmd">&gt; 这是 Academic Discussion，帮我批一下</span>
+            <span class="ln ok">取证表：14 处错误定位到原句</span>
+            <span class="ln ok">ETS 0–5 量表逐条比对 → 3 / 5</span>
+            <span class="ln ok">强制自我反驳：这篇为什么该更低</span>
+            <span class="ln ok">批改报告.docx（真实 Word 批注）</span>
+            <span class="ln ok">修订版.docx · 网页报告 · 进步档案</span>
+          </div>
+          <p class="sub">每一个分数，都能用你原文里的句子解释。</p>
+        </div>
+      </section>
+
+      <!-- 第四幕 · 证据（21.1–27.5s） -->
+      <section id="s4" class="clip" data-start="21.1" data-duration="6.4" data-track-index="4">
+        <div class="scene-content">
+          <h2 class="h2">为什么敢卖</h2>
+          <div class="chips">
+            <div class="chip hi">先取证<br />再给分</div>
+            <div class="chip">官方 rubric<br />原文内置</div>
+            <div class="chip">本地运行<br />作文不上传</div>
+            <div class="chip">零依赖<br />两分钟装好</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 第五幕 · CTA（27.1–32s） -->
+      <section id="s5" class="clip" data-start="27.1" data-duration="4.9" data-track-index="5">
+        <div class="scene-content">
+          <div class="eyebrow"><b>早鸟价</b> · 限时一折</div>
+          <div class="price"><span class="now"><i class="cur">¥</i>9.9</span><span class="old">原价 ¥99</span></div>
+          <div class="rule"></div>
+          <div class="cta">评论区扣 1 · 或点主页橱窗</div>
+          <div class="compat">Claude Code / Codex / CodeBuddy 通用 · 本地运行 · 作文不上传</div>
+          <div class="legal">输出为学习用的校准估分，不是官方成绩。</div>
+        </div>
+      </section>
+
+      <!-- 配音 / BGM 的加法见 README.md（lint 会检查 src 是否存在，所以这里不放占位标签）。 -->
+    </div>
+
+    <script>
+      // 幕起点（秒）。改幕长时同步改上面 section 的 data-start / data-duration。
+      const S = { s1: 0, s2: 3.6, s3: 9.1, s4: 21.1, s5: 27.1 };
+      const X = 0.4; // 交叉淡入时长
+
+      const tl = gsap.timeline({ paused: true });
+
+      // 第一幕
+      tl.from(".bar", { scaleX: 0, transformOrigin: "left center", duration: 0.6, ease: "power3.out" }, 0);
+      tl.from("#s1 .eyebrow", { y: 30, opacity: 0, duration: 0.5, ease: "power3.out" }, 0.1);
+      tl.from("#s1 .h1 .line", { y: 90, opacity: 0, duration: 0.7, stagger: 0.14, ease: "power3.out" }, 0.2);
+      tl.from("#s1 .sub", { y: 40, opacity: 0, duration: 0.6, ease: "power3.out" }, 0.85);
+      tl.from("#s1 .tag", { scale: 0, rotation: -10, duration: 0.6, ease: "back.out(1.7)" }, 1.05);
+
+      // 第二幕
+      tl.to("#s1", { opacity: 0, duration: X - 0.02, ease: "power2.in" }, S.s2);
+      tl.from("#s2", { opacity: 0, duration: X, ease: "power2.out" }, S.s2);
+      tl.from("#s2 .h2", { y: 50, opacity: 0, duration: 0.6, ease: "power3.out" }, S.s2 + 0.2);
+      tl.from("#s2 .row", { x: -70, opacity: 0, duration: 0.55, stagger: 0.85, ease: "power3.out" }, S.s2 + 0.9);
+
+      // 第三幕
+      tl.to("#s2", { opacity: 0, duration: X - 0.02, ease: "power2.in" }, S.s3);
+      tl.from("#s3", { opacity: 0, duration: X, ease: "power2.out" }, S.s3);
+      tl.from("#s3 .h2", { y: 50, opacity: 0, duration: 0.6, ease: "power3.out" }, S.s3 + 0.2);
+      tl.from("#s3 .term", { y: 80, opacity: 0, duration: 0.7, ease: "power3.out" }, S.s3 + 0.5);
+      tl.from("#s3 .ln", { x: 24, opacity: 0, duration: 0.45, stagger: 1.15, ease: "power2.out" }, S.s3 + 1.2);
+      tl.from("#s3 .sub", { y: 30, opacity: 0, duration: 0.6, ease: "power3.out" }, S.s3 + 9.6);
+
+      // 第四幕
+      tl.to("#s3", { opacity: 0, duration: X - 0.02, ease: "power2.in" }, S.s4);
+      tl.from("#s4", { opacity: 0, duration: X, ease: "power2.out" }, S.s4);
+      tl.from("#s4 .h2", { y: 50, opacity: 0, duration: 0.6, ease: "power3.out" }, S.s4 + 0.2);
+      tl.from("#s4 .chip", { y: 60, opacity: 0, duration: 0.5, stagger: 0.6, ease: "power3.out" }, S.s4 + 0.8);
+
+      // 第五幕（最后一幕允许收尾淡出）
+      tl.to("#s4", { opacity: 0, duration: X - 0.02, ease: "power2.in" }, S.s5);
+      tl.from("#s5", { opacity: 0, duration: X, ease: "power2.out" }, S.s5);
+      tl.from("#s5 .eyebrow", { y: 30, opacity: 0, duration: 0.5, ease: "power3.out" }, S.s5 + 0.2);
+      tl.from("#s5 .now", { y: 60, scale: 1.06, opacity: 0, transformOrigin: "left center", duration: 0.7, ease: "power3.out" }, S.s5 + 0.4);
+      tl.from("#s5 .old", { x: 30, opacity: 0, duration: 0.5, ease: "power3.out" }, S.s5 + 0.9);
+      tl.from("#s5 .cta", { y: 40, opacity: 0, duration: 0.55, ease: "power3.out" }, S.s5 + 1.3);
+      tl.from("#s5 .compat, #s5 .legal", { y: 20, opacity: 0, duration: 0.5, stagger: 0.2, ease: "power3.out" }, S.s5 + 1.8);
+
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

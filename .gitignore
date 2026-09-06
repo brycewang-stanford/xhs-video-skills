@@ -1,0 +1,20 @@
+# macOS
+.DS_Store
+._*
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Node / HyperFrames
+node_modules/
+templates/hyperframes-vertical/out/
+templates/hyperframes-vertical/.hyperframes/
+templates/hyperframes-vertical/assets/*
+!templates/hyperframes-vertical/assets/.gitkeep
+
+# 视频工作区中间产物（本 skill 约定只写到 <项目>/edit/，不应进本仓库）
+edit/
+*.log
