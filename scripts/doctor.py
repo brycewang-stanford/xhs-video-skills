@@ -13,6 +13,7 @@ from _common import available_cjk_fonts  # noqa: E402
 
 HOME = os.path.expanduser("~")
 SKILLS = os.path.join(HOME, ".claude", "skills")
+TTS_ENV = os.path.join(HOME, ".config", "xhs-video-skills", "tts.env")
 
 
 def ver(cmd, args=("--version",)):
@@ -65,6 +66,25 @@ def elevenlabs_key():
     return ""
 
 
+def tts_key(name):
+    if os.environ.get(name):
+        return "环境变量"
+    try:
+        with open(TTS_ENV, encoding="utf-8") as f:
+            if any(l.strip().startswith(name + "=") and len(l.split("=", 1)[1].strip()) > 5 for l in f):
+                return TTS_ENV
+    except OSError:
+        pass
+    return ""
+
+
+def edge_tts():
+    for c in [shutil.which("edge-tts"), os.path.join(HOME, ".venvs", "tts", "bin", "edge-tts")]:
+        if c and os.path.exists(c):
+            return c
+    return "uvx edge-tts" if shutil.which("uvx") else ""
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--json", action="store_true", help="机器可读输出")
@@ -88,6 +108,13 @@ def main():
     fonts = available_cjk_fonts()
     checks.append({"name": "中文字体", "ok": bool(fonts), "detail": ", ".join(fonts), "hint": "缺中文字体字幕会变方块", "required": True})
 
+    for name, what in [("MINIMAX_API_KEY", "MiniMax speech-2.8-hd，中文女声最自然的一档"), ("DASHSCOPE_API_KEY", "Qwen3-TTS，便宜、自然")]:
+        k = tts_key(name)
+        checks.append({"name": f"配音 {name}", "ok": bool(k), "detail": k, "hint": f"可选（付费，约 ¥0.01–0.05 / 条）：{what}；写进 {TTS_ENV}", "required": False})
+    e = edge_tts()
+    checks.append({"name": "配音 edge-tts", "ok": bool(e), "detail": e, "hint": "bash scripts/setup.sh --tts（免费女声晓晓，没有付费 key 时用它）", "required": False})
+    checks.append({"name": "配音 say（离线兜底）", "ok": bool(shutil.which("say")), "detail": "Tingting，机器味重，只在断网时用", "hint": "仅 macOS", "required": False})
+
     checks.append(check_skill("hyperframes", "npx --yes hyperframes@latest skills update"))
     checks.append(check_skill("hyperframes-core", "npx --yes hyperframes@latest skills update"))
     checks.append(check_skill("hyperframes-cli", "npx --yes hyperframes@latest skills update"))
@@ -101,6 +128,8 @@ def main():
         checks.append(check_skill(s, f"可选（付费 API）：npx skills add prime-skills/runcomfy-agent-skills@{s} -g -y"))
 
     ok = {c["name"]: c["ok"] for c in checks}
+    voice = next((label for name, label in [("配音 MINIMAX_API_KEY", "MiniMax speech-2.8-hd"), ("配音 DASHSCOPE_API_KEY", "Qwen3-TTS"),
+                                             ("配音 edge-tts", "edge-tts 晓晓（免费）"), ("配音 say（离线兜底）", "macOS say（兜底）")] if ok[name]), "")
     pipelines = {
         "A1 video-use 自动剪辑": ok["ffmpeg"] and ok["skill:video-use"] and ok["ELEVENLABS_API_KEY"],
         "A2 本地静音剪辑 + 字幕 + 导出": ok["ffmpeg"] and ok["ffmpeg filter:ass"] and ok["中文字体"],
@@ -110,7 +139,7 @@ def main():
     }
 
     if a.json:
-        print(json.dumps({"checks": checks, "pipelines": pipelines}, ensure_ascii=False, indent=2))
+        print(json.dumps({"checks": checks, "pipelines": pipelines, "voice_engine": voice}, ensure_ascii=False, indent=2))
         return
 
     print("== 工具体检 ==")
@@ -121,7 +150,13 @@ def main():
     print("\n== 可走的流水线 ==")
     for name, yes in pipelines.items():
         print(f"{'✔' if yes else '－'} {name}")
+    print("\n== 配音（每条必做） ==")
+    print(f"✔ voiceover.py 将使用：{voice}" if voice else "✘ 没有可用的配音引擎：bash scripts/setup.sh --tts")
+    if voice.startswith(("edge", "macOS")):
+        print(f"  想要更自然的女声：把 MINIMAX_API_KEY 或 DASHSCOPE_API_KEY 写进 {TTS_ENV}")
     missing_required = [c["name"] for c in checks if c.get("required") and not c["ok"]]
+    if not voice:
+        missing_required.append("配音引擎")
     if missing_required:
         print("\n必需项缺失: " + ", ".join(missing_required))
         sys.exit(1)

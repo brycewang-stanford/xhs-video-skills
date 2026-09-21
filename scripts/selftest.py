@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""自检：生成一段测试素材，把每个脚本跑一遍并校验产物。应看到 All 12 checks passed。"""
+"""自检：生成一段测试素材，把每个脚本跑一遍并校验产物。应看到 All 16 checks passed。"""
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -84,6 +85,27 @@ def main():
         before, after = (frame_bytes(v, 1.0), frame_bytes(subbed, 1.0)) if si else (b"", b"")
         ok = si and abs(si["duration"] - vi["duration"]) < 0.2 and before and after and before != after
         check("burn_subs.py 中文字幕烧录", ok, out[-300:] if not ok else "")
+
+        # 6b voiceover（哑引擎，不联网）：分镜表 → 配音 + 同步 SRT → 合轨 + 烧字幕
+        md = os.path.join(tmp, "脚本.md")
+        with open(md, "w", encoding="utf-8") as f:
+            f.write("| # | 时间 | 画面 | 口播 | 字幕 |\n|---|---|---|---|---|\n"
+                    "| 1 | 0–2s | 大字 | 托福写作改版了，你的 TPO 还考吗 | |\n"
+                    "| 2 | 2–4s | 价格 | 早鸟{¥9.9=九块九} / 评论区扣一 | |\n")
+        vo_dir = os.path.join(tmp, "vo")
+        dubbed = os.path.join(tmp, "dubbed.mp4")
+        code, out = script("voiceover.py", md, "--engine", "mock", "--outdir", vo_dir, "--video", v, "--burn", "-o", dubbed)
+        srt_txt = open(os.path.join(vo_dir, "voiceover.srt"), encoding="utf-8").read() if code == 0 else ""
+        cue_texts = [b.split("\n")[2] for b in srt_txt.strip().split("\n\n")] if srt_txt else []
+        check("voiceover.py 分镜表 → 字幕断句", cue_texts == ["托福写作改版了", "你的 TPO 还考吗", "早鸟¥9.9", "评论区扣一"], out[-300:] if code else str(cue_texts))
+        # 哑引擎在每个标点处留 0.25s 静音；第 1、2 屏的交界必须落在这段静音里（第 1 屏 7 音节 ≈ 1.44s，起点 0.3s）
+        m = re.search(r"--> (\d+):(\d+):(\d+),(\d+)\n托福写作改版了", srt_txt)
+        edge = int(m.group(3)) + int(m.group(4)) / 1000 if m else -1
+        check("voiceover.py 字幕边界对到停顿", 1.70 <= edge <= 2.00, f"{edge:.3f}s")
+        di = media_info(dubbed) if code == 0 else None
+        ok = di and di["has_audio"] and di["duration"] >= vi["duration"] - 0.1 and frame_bytes(v, 1.0) != frame_bytes(dubbed, 1.0) \
+            and os.path.exists(os.path.join(vo_dir, "voiceover.json"))
+        check("voiceover.py 合轨 + 烧字幕", ok, out[-300:] if not ok else "")
 
         # 7 cover
         covers = os.path.join(tmp, "covers")

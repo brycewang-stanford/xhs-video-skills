@@ -64,6 +64,7 @@ ffmpeg -y -f concat -safe 0 -i list.txt -c copy out.mp4      # 要求各段编�
 ```
 
 ## 音频
+配音、合轨、BGM 压低日常都走 `voiceover.py`；下面是手工兜底。
 ```bash
 ffmpeg -y -i in.mp4 -af "loudnorm=I=-16:TP=-1.5:LRA=11" -c:v copy -c:a aac -b:a 192k out.mp4   # 响度归一
 ffmpeg -y -i video.mp4 -i vo.m4a -map 0:v -map 1:a -c:v copy -c:a aac -shortest out.mp4        # 换配音

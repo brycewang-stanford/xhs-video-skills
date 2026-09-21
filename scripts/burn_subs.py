@@ -8,7 +8,7 @@ import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _common import (FONT_FILES, default_output, ensure_parent, escape_filter_path, ffmpeg_base,  # noqa: E402
+from _common import (FONT_FILES, default_output, display_len, ensure_parent, escape_filter_path, ffmpeg_base,  # noqa: E402
                      find_font_file, fonts_dir_for, media_info, run, x264_args)
 
 PAPER = "#FBFAF7"
@@ -139,9 +139,9 @@ def main():
             cues = parse_srt(f.read())
         if not cues:
             sys.exit("SRT 里没有解析到任何字幕。")
-        long = [t for _, _, t in cues if len("".join(t)) > 14]
+        long = [t for _, _, t in cues if display_len("".join(t)) > 14]
         if long:
-            print(f"[提醒] 有 {len(long)} 条字幕超过 14 字，小红书一句一屏建议拆开。")
+            print(f"[提醒] 有 {len(long)} 条字幕超过 14 字（英文数字算半个），小红书一句一屏建议拆开。")
         ass_path = os.path.splitext(out)[0] + ".ass"
         with open(ass_path, "w", encoding="utf-8") as f:
             f.write(build_ass(cues, w, h, a.style, font_name, a.size, a.bottom, a.accent, a.bold))

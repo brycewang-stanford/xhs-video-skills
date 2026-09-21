@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """最终导出：统一到小红书规格（默认 1080×1920 / 30fps / H.264 High / AAC 48k / 响度 -16 LUFS / faststart）并自检。
-用法: python3 xhs_export.py in.mp4 [-o out.mp4] [--aspect 9:16|3:4] [--fit blur|crop|pad] [--fps 30] [--crf 19] [--no-loudnorm]"""
+用法: python3 xhs_export.py in.mp4 [-o out.mp4] [--aspect 9:16|3:4] [--fit blur|crop|pad] [--fps 30] [--crf 19] [--no-loudnorm] [--allow-silent]"""
 import argparse
 import os
 import sys
@@ -21,6 +21,7 @@ def main():
     ap.add_argument("--preset", default="slow")
     ap.add_argument("--color", default=PAPER)
     ap.add_argument("--no-loudnorm", action="store_true")
+    ap.add_argument("--allow-silent", action="store_true", help="允许无声成片（默认判 FAIL：每条成片都要有配音）")
     a = ap.parse_args()
 
     info = media_info(a.input)
@@ -45,7 +46,7 @@ def main():
         cmd += ["-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-ac", "2"]
     else:
         cmd += ["-an"]
-        print("[提醒] 源无音轨，成片将无声。")
+        print("[提醒] 源无音轨，成片将无声。先跑 voiceover.py 配音。")
     cmd += ["-movflags", "+faststart", out]
     run(cmd)
 
@@ -54,6 +55,7 @@ def main():
         ("分辨率", f"{o['width']}×{o['height']}", (o["width"], o["height"]) == (w, h)),
         ("帧率", f"{o['fps']:.2f}", abs(o["fps"] - a.fps) < 0.5),
         ("编码", f"{o['vcodec']} / {o['acodec'] or '无音频'}", o["vcodec"] == "h264"),
+        ("配音音轨", "有" if o["has_audio"] else "无（先跑 voiceover.py）", o["has_audio"] or a.allow_silent),
         ("faststart", "是" if has_faststart(out) else "否", has_faststart(out)),
         ("时长", fmt_dur(o["duration"]), True),
         ("大小", f"{fmt_size(o['size'])}（{o['bitrate'] / 1e6:.1f} Mbps）", o["size"] < 5 * 1024 ** 3),

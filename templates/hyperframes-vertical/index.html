@@ -43,10 +43,10 @@
         font-family: "Times New Roman", serif; font-size: 22px; letter-spacing: 0.18em; color: var(--muted);
       }
 
-      /* 幕：安全区 上 240 / 下 460 / 左右 100 */
+      /* 幕：安全区 上 240 / 下 640 / 左右 100。距底 460–640 是字幕带，留给 voiceover.py 烧的同步字幕（--style box --bottom 520） */
       .clip { position: absolute; inset: 0; }
       .scene-content {
-        width: 100%; height: 100%; padding: 240px 100px 460px;
+        width: 100%; height: 100%; padding: 240px 100px 640px;
         display: flex; flex-direction: column; justify-content: center; gap: 40px;
       }
       .eyebrow { font-size: 30px; letter-spacing: 0.3em; color: var(--muted); font-weight: 600; }

@@ -9,6 +9,7 @@
 | **FFmpeg 7.x**（必需） | 剪辑、转竖屏、字幕、导出的底层 | 免费 | `brew install ffmpeg`（brew 版自带 libass 字幕渲染） | `scripts/*.py` 全部 |
 | **HyperFrames**（HeyGen） | 用 HTML + GSAP 写动效，本地 Chrome 渲染成 MP4 | 免费 | skills 已在 `~/.claude/skills/hyperframes*` 与 `media-use`；CLI 用 `npx --yes hyperframes@0.8.29` 按需下载，首次会下 Chrome | 流水线 B / C（`templates/hyperframes-vertical/`） |
 | **video-use**（browser-use 团队，MIT） | 口播 / 屏录自动转写、去口水词和静音、调色、烧字幕，输出 `edit/final.mp4` | 软件免费；转写走 ElevenLabs Scribe 按量计费 | `bash scripts/setup.sh --video-use`，再把 `ELEVENLABS_API_KEY` 写进 `~/Developer/video-use/.env` | 流水线 A1 |
+| **AI 配音 + 同步字幕**（本 skill 自带 `voiceover.py`） | 分镜表口播列 → 女声普通话配音 + 逐句对时的 SRT → 合轨 → 烧字幕 | 免费档 edge-tts；付费档约 ¥0.01–0.05 / 条 | 见下文「配音引擎」 | **所有流水线** |
 | **本地静音剪辑**（本 skill 自带） | 没有 key 时的替代，`silence_cut.py` 按静音自动切 | 免费 | 已内置 | 流水线 A2 |
 | **youtube-clipper**（op7418） | 下载 YouTube 视频、AI 分章节、切片、双语字幕 | 免费（下载走 yt-dlp） | `bash scripts/setup.sh --clipper` | 引用他人视频片段做对比素材 |
 | **Remotion skills** | 用 React 写视频，已装 `remotion-best-practices` | 免费 | 已装 | 只在需要 React 生态（复杂图表、3D）时用，日常优先 HyperFrames |
@@ -22,10 +23,11 @@
 ```
 有口播 / 屏录素材？
  ├─ 是 → 有 ELEVENLABS_API_KEY？ ├─ 是 → A1 video-use
- │                                └─ 否 → A2 本地（probe → silence_cut → to_vertical → burn_subs → xhs_export）
+ │                                └─ 否 → A2 本地（probe → silence_cut → to_vertical → voiceover --burn → xhs_export）
  └─ 否 → 只有文字 / 截图 / 卖点 → B HyperFrames 竖屏模板（零素材出片）
 片头 / 价格卡 + 真实演示都要 → C 混合：B 出片头片尾，A 出主体，concat.py 拼接
 要真人 / 场景镜头但没得拍     → D AI 生成（付费，先报价），产物回到 A / C 当素材
+无论哪条，画面定稿后都过一遍 voiceover.py：女声配音 + 同步字幕
 ```
 
 ## HyperFrames skill 家族（2026-09-05 由 `hyperframes init` 升级为模块化版本）
@@ -38,20 +40,40 @@
 - 只改模板文案：直接改 `index.html`，然后 `npm run check`。
 - 更新 skills：`npx --yes hyperframes@latest skills update`。
 
-## 转写与配音
+## 配音引擎（每条视频必做，`scripts/voiceover.py` 统一调用）
+
+`--engine auto`（默认）按下表从上到下取第一个本机可用的。一条 30 秒视频约 140 字。
+
+| 档 | 引擎 / 模型 | 默认女声 | 自然度 | 费用 | 怎么启用 |
+|---|---|---|---|---|---|
+| 1 | **MiniMax `speech-2.8-hd`** | `Chinese (Mandarin)_Warm_Bestie`（温暖闺蜜） | 短视频配音里中文最像真人：有气口、有语气起伏 | 约 ¥3.5 / 万字符 ≈ ¥0.05 / 条 | `MINIMAX_API_KEY`（国内站 platform.minimaxi.com；国际站 key 另设 `MINIMAX_API_HOST=https://api.minimax.io`） |
+| 2 | **Qwen3-TTS `qwen3-tts-flash`**（阿里百炼） | `Cherry`（芊悦，阳光亲切小姐姐） | 很自然，中英混读稳（Claude Code、TPO 这类词不翻车） | 约 ¥0.8 / 万字符 ≈ ¥0.01 / 条 | `DASHSCOPE_API_KEY`（国际站另设 `DASHSCOPE_API_HOST=https://dashscope-intl.aliyuncs.com`） |
+| 3 | **edge-tts**（微软 Edge 在线语音） | `zh-CN-XiaoxiaoNeural`（晓晓） | 干净清楚，略播音腔 | 免费，需联网 | `bash scripts/setup.sh --tts` |
+| 4 | macOS `say -v Tingting` | 婷婷 | 机器味重，只在断网时兜底 | 免费，离线 | 系统自带 |
+
+- key 写进 `~/.config/xhs-video-skills/tts.env`（`KEY=VALUE`，一行一个），或放环境变量。不要写进项目目录。
+- 候选女声：MiniMax 还有 `Sweet_Lady`（甜美）、`Warm_Girl`（温暖少女）、`Crisp_Girl`（清脆）、`Gentle_Senior`（温柔学姐）、`female-shaonv`；
+  Qwen 还有 `Serena`（温柔）、`Maia`（知性）、`Nini`（邻家）。用 `voiceover.py --audition "早鸟九块九，评论区扣一"` 各出一段让用户挑，
+  挑定后一个账号固定用一个（`--voice`），别每条换人。
+- 模型在迭代：平台出了更新的版本，用 `--model <新模型名>` 直接试，好就改 `voiceover.py` 顶部 `ENGINES` 里的默认值。
+- 已合成的句子缓存在 `edit/vo/cache/`，改一句只重合成那一句，不重复计费。
+- HyperFrames 自带的 `tts` 中文 2026-09-05 实测本机不可用（`espeakng-loader` 数据路径写死），别在这上面花时间。
+
+## 转写（只在用户坚持用自己原声时才需要）
 
 | 需要 | 用 |
 |---|---|
 | 口播转字幕（有 key） | video-use 自带（ElevenLabs Scribe，词级时间戳） |
 | 口播转字幕（无 key） | `npx --yes hyperframes@0.8.29 transcribe <视频>`（本地 Whisper，中文用 `--model small --language zh`，不要用 `.en` 模型） |
-| 文字转配音（首选） | **edge-tts**（微软 Edge 在线语音，免费，中文自然）：`uv venv ~/.venvs/tts --python 3.11 && uv pip install --python ~/.venvs/tts/bin/python edge-tts`，然后 `~/.venvs/tts/bin/python -m edge_tts --voice zh-CN-XiaoxiaoNeural --rate=+5% --text "口播" --write-media vo1.mp3`，再 `ffmpeg -i vo1.mp3 -ar 48000 -ac 2 vo1.wav` 放进 `assets/`。每幕一段，按段时长重排幕的 `data-start` / `data-duration`。其他音色：zh-CN-YunxiNeural（男）、zh-CN-XiaoyiNeural。需要联网。 |
-| 文字转配音（备选） | macOS 自带 `say -v Tingting "口播" -o vo.aiff`（离线，机器味重）。HyperFrames 自带的 `tts` 中文 2026-09-05 实测本机不可用：依赖 `espeakng-loader` 的数据路径写死成打包机路径，设 `ESPEAK_DATA_PATH` 也无效，别在这上面花时间。 |
 
 ## 链接
 
 - video-use: https://github.com/browser-use/video-use
 - HyperFrames: https://hyperframes.heygen.com
 - youtube-clipper: https://github.com/op7418/Youtube-clipper-skill
+- MiniMax 语音: https://platform.minimax.io/docs/api-reference/speech-t2a-http（音色表 https://platform.minimax.io/docs/faq/system-voice-id）
+- Qwen3-TTS: https://help.aliyun.com/zh/model-studio/qwen-tts-api
+- edge-tts: https://github.com/rany2/edge-tts
 - runcomfy skills: https://skills.sh/prime-skills/runcomfy-agent-skills/video-edit
 - Higgsfield MCP: https://claudefa.st/blog/tools/mcp-extensions/higgsfield-mcp
 - Runway MCP: https://runway.com/mcp

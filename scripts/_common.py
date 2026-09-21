@@ -154,6 +154,11 @@ def fmt_dur(sec):
     return f"{m}:{sec - m * 60:04.1f}"
 
 
+def display_len(s):
+    """字幕占位：汉字等全角算 1，英文数字半角算 0.5。"""
+    return sum(1.0 if ord(c) > 0x2E7F else 0.5 for c in str(s))
+
+
 def fmt_size(b):
     b = float(b or 0)
     for u in ["B", "KB", "MB", "GB"]:
