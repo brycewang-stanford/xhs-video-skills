@@ -42,19 +42,21 @@
 
 ## 配音引擎（每条视频必做，`scripts/voiceover.py` 统一调用）
 
-`--engine auto`（默认）按下表从上到下取第一个本机可用的。一条 30 秒视频约 140 字。
+**默认配音 = edge-tts 晓伊（`zh-CN-XiaoyiNeural`），语速 ×1.05（edge-tts `--rate=+5%`），逐句裁首尾静音。**
+这是 AERS 20 秒宣传片 v4（`宣传海报-视频-汇总/9.21-AERS-海报宣传/AERS-20秒宣传视频/AERS-小红书-20260921-v4.mp4`）用的声音，
+比晓晓更口语、不播音腔。`--engine auto`（默认）就用它，有付费 key 也不会自动切走；只有没装 edge-tts 时才往下退。一条 30 秒视频约 140 字。
 
 | 档 | 引擎 / 模型 | 默认女声 | 自然度 | 费用 | 怎么启用 |
 |---|---|---|---|---|---|
-| 1 | **MiniMax `speech-2.8-hd`** | `Chinese (Mandarin)_Warm_Bestie`（温暖闺蜜） | 短视频配音里中文最像真人：有气口、有语气起伏 | 约 ¥3.5 / 万字符 ≈ ¥0.05 / 条 | `MINIMAX_API_KEY`（国内站 platform.minimaxi.com；国际站 key 另设 `MINIMAX_API_HOST=https://api.minimax.io`） |
-| 2 | **Qwen3-TTS `qwen3-tts-flash`**（阿里百炼） | `Cherry`（芊悦，阳光亲切小姐姐） | 很自然，中英混读稳（Claude Code、TPO 这类词不翻车） | 约 ¥0.8 / 万字符 ≈ ¥0.01 / 条 | `DASHSCOPE_API_KEY`（国际站另设 `DASHSCOPE_API_HOST=https://dashscope-intl.aliyuncs.com`） |
-| 3 | **edge-tts**（微软 Edge 在线语音） | `zh-CN-XiaoxiaoNeural`（晓晓） | 干净清楚，略播音腔 | 免费，需联网 | `bash scripts/setup.sh --tts` |
-| 4 | macOS `say -v Tingting` | 婷婷 | 机器味重，只在断网时兜底 | 免费，离线 | 系统自带 |
+| **默认** | **edge-tts**（微软 Edge 在线语音） | **`zh-CN-XiaoyiNeural`（晓伊）· ×1.05** | 口语、亲切，AERS v4 同款 | 免费，需联网 | `bash scripts/setup.sh --tts` |
+| 备选 | MiniMax `speech-2.8-hd` | `Chinese (Mandarin)_Warm_Bestie`（温暖闺蜜） | 有气口、有语气起伏 | 约 ¥3.5 / 万字符 ≈ ¥0.05 / 条 | `--engine minimax` + `MINIMAX_API_KEY`（国内站 platform.minimaxi.com；国际站 key 另设 `MINIMAX_API_HOST=https://api.minimax.io`） |
+| 备选 | Qwen3-TTS `qwen3-tts-flash`（阿里百炼） | `Cherry`（芊悦，阳光亲切小姐姐） | 很自然，中英混读稳 | 约 ¥0.8 / 万字符 ≈ ¥0.01 / 条 | `--engine qwen` + `DASHSCOPE_API_KEY`（国际站另设 `DASHSCOPE_API_HOST=https://dashscope-intl.aliyuncs.com`） |
+| 兜底 | macOS `say -v Tingting` | 婷婷 | 机器味重，只在断网时兜底 | 免费，离线 | 系统自带 |
 
 - key 写进 `~/.config/xhs-video-skills/tts.env`（`KEY=VALUE`，一行一个），或放环境变量。不要写进项目目录。
-- 候选女声：MiniMax 还有 `Sweet_Lady`（甜美）、`Warm_Girl`（温暖少女）、`Crisp_Girl`（清脆）、`Gentle_Senior`（温柔学姐）、`female-shaonv`；
+- 候选女声：edge-tts 还有 `zh-CN-XiaoxiaoNeural`（晓晓，更播音腔）；MiniMax 还有 `Sweet_Lady`（甜美）、`Warm_Girl`（温暖少女）、`Crisp_Girl`（清脆）、`Gentle_Senior`（温柔学姐）、`female-shaonv`；
   Qwen 还有 `Serena`（温柔）、`Maia`（知性）、`Nini`（邻家）。用 `voiceover.py --audition "早鸟九块九，评论区扣一"` 各出一段让用户挑，
-  挑定后一个账号固定用一个（`--voice`），别每条换人。
+  只在用户想换掉默认晓伊时才试听；挑定后一个账号固定用一个（`--engine` + `--voice`），别每条换人。
 - 模型在迭代：平台出了更新的版本，用 `--model <新模型名>` 直接试，好就改 `voiceover.py` 顶部 `ENGINES` 里的默认值。
 - 已合成的句子缓存在 `edit/vo/cache/`，改一句只重合成那一句，不重复计费。
 - HyperFrames 自带的 `tts` 中文 2026-09-05 实测本机不可用（`espeakng-loader` 数据路径写死），别在这上面花时间。

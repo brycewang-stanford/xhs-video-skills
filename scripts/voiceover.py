@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """口播 → 女声普通话配音 + 逐句同步字幕（SRT）；可一步合到视频并烧字幕。每条视频必跑。
 用法: python3 voiceover.py edit/脚本.md|口播.txt [--video in.mp4 -o out.mp4 --burn] [--outdir edit/vo]
-      [--engine auto|minimax|qwen|edge|say] [--voice 音色] [--speed 1.08] [--gap 0.25] [--lead 0.3] [--max-chars 14]
+      [--engine auto|minimax|qwen|edge|say] [--voice 音色] [--speed 1.05] [--gap 0.25] [--lead 0.3] [--max-chars 14]
       [--bgm bgm.mp3 --bgm-volume 0.18] [--keep-audio 0.0] [--no-anchor] [--dry-run] [--audition "试听文本"]
 
 输入：.md 取分镜表「口播」列，「时间」列的起点当锚点；.txt 一行一句，行首 `@3.5` 是锚点（秒），`#` 开头是注释。
 口播里的两个记号：` / ` 强制换屏；`{¥9.9=九块九}` 画面显示 ¥9.9、嘴上念九块九。
-引擎：auto 按 MINIMAX_API_KEY → DASHSCOPE_API_KEY → edge-tts → say 依次取第一个可用的；key 也可写在
+引擎：auto 默认 edge-tts 晓伊（zh-CN-XiaoyiNeural，语速 +5%，即 AERS 20 秒宣传片 v4 的配音），没有 edge-tts 才依次
+退到 MINIMAX_API_KEY → DASHSCOPE_API_KEY → say；付费引擎用 --engine minimax|qwen 显式指定，key 也可写在
 ~/.config/xhs-video-skills/tts.env（KEY=VALUE）。产物：outdir 下 voiceover.wav / voiceover.srt / voiceover.json / vo_NNN.wav。"""
 import argparse
 import hashlib
@@ -38,13 +39,14 @@ ENGINES = {
         "voices": ["Cherry", "Serena", "Maia", "Nini", "Katerina"],
     },
     "edge": {
-        "label": "edge-tts（免费）", "model": "edge", "voice": "zh-CN-XiaoxiaoNeural", "price": 0,
-        "voices": ["zh-CN-XiaoxiaoNeural", "zh-CN-XiaoyiNeural"],
+        "label": "edge-tts（免费）", "model": "edge", "voice": "zh-CN-XiaoyiNeural", "price": 0,
+        "voices": ["zh-CN-XiaoyiNeural", "zh-CN-XiaoxiaoNeural"],
     },
     "say": {"label": "macOS say（离线兜底，机器味重）", "model": "say", "voice": "Tingting", "price": 0, "voices": ["Tingting"]},
     "mock": {"label": "自检用哑引擎", "model": "mock", "voice": "tone", "price": 0, "voices": ["tone"]},
 }
-AUTO_ORDER = ["minimax", "qwen", "edge", "say"]
+# 默认音色 = AERS 20 秒宣传片 v4 的配音：edge-tts 晓伊 + 语速 1.05。付费引擎只在 --engine 显式指定或没装 edge-tts 时用。
+AUTO_ORDER = ["edge", "minimax", "qwen", "say"]
 
 HARD = set("，。！？；：,!?;:…\n")
 SOFT = set("、 ")
@@ -181,7 +183,7 @@ def split_long(atoms, max_chars):
 
 
 def build_cues(atoms, max_chars):
-    """返回 [{text, weight, snap, inner}]；snap=这一屏之后有标点停顿，可对到音频里的静音；inner=屏内还有几处停顿。"""
+    """返回 [{text, weight, snap}]；snap=True 表示这一屏之后有标点停顿，可以对到音频里的静音。"""
     clauses, cur = [], []
     for a in atoms:
         if a is BREAK:
@@ -220,9 +222,7 @@ def build_cues(atoms, max_chars):
         hard_split = hard_split or len(parts) > 1
         for k, p in enumerate(parts):
             if shown(p):
-                body = re.sub(r"[，。！？；：,!?;:…\n\s]+$", "", "".join(a[1] for a in p))
-                cues.append({"text": shown(p), "weight": max(0.5, weight(body)), "snap": k == len(parts) - 1,
-                             "inner": len(re.findall(r"[，。！？；：,!?;:…\n]+", body))})
+                cues.append({"text": shown(p), "weight": max(0.5, weight("".join(a[1] for a in p))), "snap": k == len(parts) - 1})
     return cues, hard_split
 
 
@@ -332,7 +332,7 @@ def pick_engine(requested):
     for e in AUTO_ORDER:
         if available(e):
             return e
-    sys.exit("没有可用的配音引擎。最省事：brew install edge-tts（免费）；要更自然：配 MINIMAX_API_KEY 或 DASHSCOPE_API_KEY。")
+    sys.exit("没有可用的配音引擎。默认音色要 edge-tts：brew install edge-tts 或 bash scripts/setup.sh --tts。")
 
 
 # ---------- 音频处理与对时 ----------
@@ -370,30 +370,20 @@ def time_cues(cues, dur, inner):
         prop.append(dur * acc / total)
     fixed = {0: 0.0, n: dur}
     snap_idx = [k for k in range(n - 1) if cues[k]["snap"]]
-    expect = []  # 按出现顺序：屏内停顿记 None，屏间停顿记屏号
-    for k, c in enumerate(cues):
-        expect += [None] * c["inner"] + ([k] if c["snap"] and k < n - 1 else [])
     gaps = []  # 被一口气声切成两截的停顿先并起来
     for s, e in inner:
         if gaps and s - gaps[-1][1] < 0.12:
             gaps[-1][1] = e
         else:
             gaps.append([s, e])
-    if len(gaps) > len(expect):  # 多出来的是词间小顿，标点处的停顿总是最长的那几个
-        keep = sorted(sorted(gaps, key=lambda g: g[0] - g[1])[:len(expect)])
-        gaps = keep
     mids = [(s + e) / 2 for s, e in gaps]
-    if snap_idx and len(mids) == len(expect):
-        for k, m in zip(expect, mids):
-            if k is not None:
-                fixed[k + 1] = m
-    else:
-        used = -1
-        for k in snap_idx:
-            cand = [(abs(m - prop[k]), j) for j, m in enumerate(mids) if j > used and abs(m - prop[k]) <= 0.6]
-            if cand:
-                used = min(cand)[1]
-                fixed[k + 1] = mids[used]
+    # 每个标点边界取离「按音节比例估的位置」最近的真实停顿（顿号、词间也会停，所以不按顺序数，按距离配）
+    used = -1
+    for k in snap_idx:
+        cand = [(abs(m - prop[k]), j) for j, m in enumerate(mids) if j > used and abs(m - prop[k]) <= max(0.6, 0.18 * dur)]
+        if cand:
+            used = min(cand)[1]
+            fixed[k + 1] = mids[used]
     keys = sorted(fixed)
     bounds = [0.0] * (n + 1)
     for lo, hi in zip(keys, keys[1:]):
@@ -479,7 +469,7 @@ def main():
     ap.add_argument("--engine", default="auto", choices=["auto"] + list(ENGINES))
     ap.add_argument("--model", default="", help="覆盖引擎默认模型，如 speech-2.8-turbo / qwen3-tts-instruct-flash")
     ap.add_argument("--voice", default="", help="覆盖默认女声；候选见 --audition")
-    ap.add_argument("--speed", type=float, default=1.08, help="语速倍数，带货口播 1.05–1.15（默认 1.08）")
+    ap.add_argument("--speed", type=float, default=1.05, help="语速倍数，带货口播 1.05–1.15（默认 1.05，edge-tts 即 +5%%）")
     ap.add_argument("--gap", type=float, default=0.25, help="句与句之间至少留多少秒")
     ap.add_argument("--lead", type=float, default=0.3, help="第一句没有锚点时从第几秒开始")
     ap.add_argument("--tail", type=float, default=0.4, help="最后一句说完后至少留多少秒画面")
@@ -527,8 +517,8 @@ def main():
         chars += len(l["spoken"])
     print(f"引擎 {cfg['label']} · 模型 {model} · 音色 {voice} · 语速 ×{a.speed} · {len(lines)} 句 {chars} 字"
           + (f" · 约 ¥{max(0.01, chars / 10000 * cfg['price']):.2f}" if cfg["price"] else " · 免费"))
-    if engine in ("edge", "say") and a.engine == "auto":
-        print("[提示] 当前是免费音色。要最自然的女声：配 MINIMAX_API_KEY（speech-2.8-hd）或 DASHSCOPE_API_KEY（Qwen3-TTS），写进 " + KEY_FILE)
+    if engine == "say" and a.engine == "auto":
+        print("[提示] 当前是离线兜底音色。装 edge-tts 即用默认的晓伊：bash scripts/setup.sh --tts")
     for i in hard:
         print(f"[提醒] 第 {i} 句有无标点长句被硬拆：{' / '.join(c['text'] for c in lines[i - 1]['cues'])}；不顺就在口播里用 / 指定断点。")
     if a.dry_run:

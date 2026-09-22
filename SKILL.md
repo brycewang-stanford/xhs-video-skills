@@ -25,7 +25,8 @@ description: 小红书带货短视频一站式制作流程：选题钩子 → �
 2. **前 3 秒必须有钩子，且钩子文字要在画面里**，不能只靠声音。
 3. **每条成片都要有女声普通话 AI 配音，和与配音逐句同步的烧录字幕**，不分流水线，没有例外。
    两样都由 `scripts/voiceover.py` 从分镜表的「口播」列一次生成：字幕时间轴只认它出的 SRT，不手掐、不估。
-   引擎自动取本机能用的最自然的一档（MiniMax speech-2.8-hd → Qwen3-TTS → edge-tts 晓晓），一个账号固定一个音色。
+   默认音色固定为 edge-tts 晓伊（`zh-CN-XiaoyiNeural`，语速 ×1.05 即 +5%，与 AERS 20 秒宣传片 v4 同一把声音），不用每条再挑；
+   MiniMax / Qwen3-TTS 只在用户明确要换声音时用 `--engine` 指定。一个账号固定一个音色。
    只有用户明说「这条用我自己的声音」才跳过配音，字幕改走转写。
 4. 字幕一句一屏、≤ 14 个汉字，放在安全区（`references/02`）。
 5. 合规：`references/06` 的红线逐条过；不说「独家」「最」「官方认证」。
@@ -62,7 +63,7 @@ python3 <skill>/scripts/doctor.py
 - 想指定换屏处写 ` / `；显示和读音不一样的写 `{¥9.9=九块九}`、`{TPO=T P O}`（画面出前者，嘴上念后者）。
 - 贴分镜表之前先跑 `python3 <skill>/scripts/voiceover.py <项目>/edit/脚本.md --dry-run`，
   把它打印的「屏：」断句填进「字幕」列一起给用户看；断得不顺就改口播，不要改 SRT。
-- 账号第一次做视频：`voiceover.py --audition "一句试听文案"` 把候选女声各出一段，让用户挑一个，之后每条都用它（`--voice`）。
+- 配音不用挑：默认就是晓伊 ×1.05（AERS v4 同款）。只有用户说想换声音时，才用 `voiceover.py --engine <引擎> --audition "一句试听文案"` 出候选让用户挑，之后每条都用它（`--engine` + `--voice`）。
 
 ## Step 3 · 选流水线并执行
 
@@ -118,7 +119,7 @@ python3 <skill>/scripts/cover_frames.py <成片> -o <项目>/edit/covers --pick 
 | `probe.py` | 素材盘点表 | `<目录或文件...>` `--json` |
 | `silence_cut.py` | 按静音自动剪 | `--noise -35` `--min-silence 0.6` `--pad 0.15` `--dry-run` `--edl x.json` |
 | `to_vertical.py` | 横屏转 9:16 / 3:4 | `--mode blur|crop|pad` `--aspect 9:16` |
-| `voiceover.py` | 口播 → 女声配音 + 同步 SRT，可合轨并烧字幕 | `--video x.mp4 --burn -o out.mp4` `--dry-run` `--audition "文案"` `--engine auto|minimax|qwen|edge` `--voice` `--speed 1.08` `--bgm` `--keep-audio 0.2` `--no-anchor` |
+| `voiceover.py` | 口播 → 女声配音 + 同步 SRT，可合轨并烧字幕 | `--video x.mp4 --burn -o out.mp4` `--dry-run` `--audition "文案"` `--engine auto|minimax|qwen|edge` `--voice` `--speed 1.05` `--bgm` `--keep-audio 0.2` `--no-anchor` |
 | `burn_subs.py` | 烧录中文字幕（SRT/ASS） | `--style clean|box|accent` `--bottom 640` `--size 64` `--accent '#1B6B5F'` `--preview 5` |
 | `concat.py` | 多段统一规格后拼接 | `--fit blur` `--aspect 9:16` |
 | `cover_frames.py` | 封面候选网格 / 指定帧出封面 | `--every 2` `--pick 12.5 --aspect 3:4` |

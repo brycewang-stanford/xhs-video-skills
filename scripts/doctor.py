@@ -110,9 +110,9 @@ def main():
 
     for name, what in [("MINIMAX_API_KEY", "MiniMax speech-2.8-hd，中文女声最自然的一档"), ("DASHSCOPE_API_KEY", "Qwen3-TTS，便宜、自然")]:
         k = tts_key(name)
-        checks.append({"name": f"配音 {name}", "ok": bool(k), "detail": k, "hint": f"可选（付费，约 ¥0.01–0.05 / 条）：{what}；写进 {TTS_ENV}", "required": False})
+        checks.append({"name": f"配音 {name}", "ok": bool(k), "detail": k, "hint": f"可选（付费，约 ¥0.01–0.05 / 条，需 --engine 显式指定）：{what}；写进 {TTS_ENV}", "required": False})
     e = edge_tts()
-    checks.append({"name": "配音 edge-tts", "ok": bool(e), "detail": e, "hint": "bash scripts/setup.sh --tts（免费女声晓晓，没有付费 key 时用它）", "required": False})
+    checks.append({"name": "配音 edge-tts", "ok": bool(e), "detail": e, "hint": "bash scripts/setup.sh --tts（默认配音：免费女声晓伊 zh-CN-XiaoyiNeural）", "required": False})
     checks.append({"name": "配音 say（离线兜底）", "ok": bool(shutil.which("say")), "detail": "Tingting，机器味重，只在断网时用", "hint": "仅 macOS", "required": False})
 
     checks.append(check_skill("hyperframes", "npx --yes hyperframes@latest skills update"))
@@ -128,8 +128,8 @@ def main():
         checks.append(check_skill(s, f"可选（付费 API）：npx skills add prime-skills/runcomfy-agent-skills@{s} -g -y"))
 
     ok = {c["name"]: c["ok"] for c in checks}
-    voice = next((label for name, label in [("配音 MINIMAX_API_KEY", "MiniMax speech-2.8-hd"), ("配音 DASHSCOPE_API_KEY", "Qwen3-TTS"),
-                                             ("配音 edge-tts", "edge-tts 晓晓（免费）"), ("配音 say（离线兜底）", "macOS say（兜底）")] if ok[name]), "")
+    voice = next((label for name, label in [("配音 edge-tts", "edge-tts 晓伊（默认，免费）"), ("配音 MINIMAX_API_KEY", "MiniMax speech-2.8-hd"),
+                                             ("配音 DASHSCOPE_API_KEY", "Qwen3-TTS"), ("配音 say（离线兜底）", "macOS say（兜底）")] if ok[name]), "")
     pipelines = {
         "A1 video-use 自动剪辑": ok["ffmpeg"] and ok["skill:video-use"] and ok["ELEVENLABS_API_KEY"],
         "A2 本地静音剪辑 + 字幕 + 导出": ok["ffmpeg"] and ok["ffmpeg filter:ass"] and ok["中文字体"],
