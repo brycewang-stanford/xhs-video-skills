@@ -1,18 +1,19 @@
 # xhs-video-skills
 
-小红书带货短视频一站式制作 Claude Code skill：
+小红书 / 抖音竖屏短视频一站式制作 Claude Code skill（带货片 + 讲解型视频）：
 环境体检 → 分镜脚本 → 剪辑 / 动效 → 女声普通话 AI 配音 + 逐句同步字幕 → 封面 → 按小红书规格导出 → 发布前合规检查。
 
 - 脚本零第三方 Python 依赖，只要 `ffmpeg` / `ffprobe`
 - 每条成片自动配女声普通话（MiniMax speech-2.8-hd / Qwen3-TTS / edge-tts 三档自动选）并生成与配音逐句对时的字幕（`scripts/voiceover.py`）
 - 自带 1080×1920 HyperFrames 五幕竖屏模板，复制即渲染
+- 讲解型视频模板 `templates/explainer-douyin/`：抖音风固定标题 + 3Blue1Brown 式图表与公式，口播稿一改全片自动重新对时；`cover_compose.py` 出封面
 - 内置钩子库、分镜模板、小红书规格、ffmpeg 速查、品牌视觉与合规红线、发布前清单
 
 ## 安装
 
 ```bash
 git clone https://github.com/brycewang-stanford/xhs-video-skills.git ~/.claude/skills/xhs-video-skills
-python3 ~/.claude/skills/xhs-video-skills/scripts/selftest.py   # 应看到 All 16 checks passed
+python3 ~/.claude/skills/xhs-video-skills/scripts/selftest.py   # 应看到 All 18 checks passed
 python3 ~/.claude/skills/xhs-video-skills/scripts/doctor.py     # 看哪几条流水线可走
 ```
 
@@ -34,15 +35,16 @@ xhs-video-skills/
 ├── SKILL.md                 主流程（Claude 读这个）
 ├── 使用说明.md               自用说明
 ├── references/              规格、钩子库、流水线命令、ffmpeg 速查、品牌与合规、发布清单
-├── scripts/                 probe / to_vertical / silence_cut / voiceover / burn_subs / cover_frames / concat / xhs_export / doctor / selftest
+├── scripts/                 probe / to_vertical / silence_cut / voiceover / burn_subs / cover_frames / cover_compose / concat / xhs_export / doctor / selftest
 ├── templates/
 │   ├── 脚本模板.md           分镜表
 │   ├── DESIGN.md            品牌设计规范（给 HyperFrames 用）
-│   └── hyperframes-vertical/ 1080×1920 五幕带货模板
+│   ├── hyperframes-vertical/ 1080×1920 五幕带货模板
+│   └── explainer-douyin/    1080×1920 讲解型模板（固定标题、深紫背景、公式与描线图表）
 └── 示例/                    对话示例、模板五幕截图、草稿画质渲染样片
 ```
 
-## 四条流水线
+## 流水线
 
 | 手里有什么 | 走哪条 |
 |---|---|
@@ -51,8 +53,9 @@ xhs-video-skills/
 | 没有素材 | B HyperFrames 竖屏动效 |
 | 动效 + 屏录混合 | C 拼接 |
 | 需要 AI 生成 B-roll | D runcomfy 等生成模型（付费） |
+| 要把一篇文章 / 论文 / 新闻讲清楚（1–3 分钟） | E 讲解型：`templates/explainer-douyin/`，见 [references/08-explainer-style.md](references/08-explainer-style.md) |
 
-不管走哪条，画面定稿后都过一遍 `voiceover.py`：合成女声 → 字幕对到真实停顿 → 合轨 → 烧录。命令逐步见 [references/04-pipelines.md](references/04-pipelines.md)。
+A–D 不管走哪条，画面定稿后都过一遍 `voiceover.py`：合成女声 → 字幕对到真实停顿 → 合轨 → 烧录。命令逐步见 [references/04-pipelines.md](references/04-pipelines.md)。
 
 ## 许可
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""自检：生成一段测试素材，把每个脚本跑一遍并校验产物。应看到 All 16 checks passed。"""
+"""自检：生成一段测试素材，把每个脚本跑一遍并校验产物。应看到 All 18 checks passed。"""
 import json
 import os
 import re
@@ -114,6 +114,11 @@ def main():
         check("cover_frames.py 输出 3:4 封面", cov and (cov["width"], cov["height"]) == (1242, 1656), out[-200:] if code else "")
         code, out = script("cover_frames.py", v, "-o", covers, "--every", "1")
         check("cover_frames.py 候选网格", code == 0 and os.path.exists(os.path.join(covers, "contact.jpg")), out[-200:] if code else "")
+        composed = os.path.join(covers, "cover-v2.png")
+        code, out = script("cover_compose.py", os.path.join(covers, "cover.png"), os.path.join(covers, "contact.jpg"),
+                           "-o", composed, "--box", "121,300,1000,560")
+        cc = media_info(composed) if code == 0 else None
+        check("cover_compose.py 嵌图后尺寸不变", cc and (cc["width"], cc["height"]) == (1242, 1656), out[-200:] if code else "")
 
         # 8 export
         final = os.path.join(tmp, "final.mp4")
@@ -145,9 +150,14 @@ def main():
         ok = all(os.path.exists(os.path.join(tpl, f)) for f in ["index.html", "package.json", "hyperframes.json", "meta.json"]) \
             and 'data-width="1080"' in html and 'data-height="1920"' in html and "window.__timelines" in html
         check("HyperFrames 竖屏模板齐全", ok)
+        ex = os.path.join(ROOT, "templates", "explainer-douyin")
+        ok = all(os.path.exists(os.path.join(ex, f)) for f in ["tools/kit.py", "tools/voice.py", "tools/script.py", "tools/scenes.py",
+                                                               "assets/fonts/STIXTwoText.ttf", "assets/fonts/STIXTwoText-Italic.ttf",
+                                                               "package.json", "hyperframes.json", "README.md"])
+        check("讲解型模板齐全", ok)
 
         # 12 文档
-        refs = [f"0{i}-" for i in range(1, 8)]
+        refs = [f"0{i}-" for i in range(1, 9)]
         have = os.listdir(os.path.join(ROOT, "references")) if os.path.isdir(os.path.join(ROOT, "references")) else []
         ok = all(any(h.startswith(p) for h in have) for p in refs) \
             and os.path.exists(os.path.join(ROOT, "SKILL.md")) \

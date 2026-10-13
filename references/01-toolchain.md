@@ -61,6 +61,9 @@
 - 已合成的句子缓存在 `edit/vo/cache/`，改一句只重合成那一句，不重复计费。
 - HyperFrames 自带的 `tts` 中文 2026-09-05 实测本机不可用（`espeakng-loader` 数据路径写死），别在这上面花时间。
 
+讲解型模板（流水线 E）的 `tools/voice.py` 另有一档本地备用：edge-tts 连不上（2026-10-13 曾整天返回 403）时自动改用
+MeloTTS 中文女声（`pip install sherpa-onnx` + `vits-melo-tts-zh_en` 模型，约 160 MB，完全离线）。Kokoro 的中文音色不要用。
+
 ## 转写（只在用户坚持用自己原声时才需要）
 
 | 需要 | 用 |

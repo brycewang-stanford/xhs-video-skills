@@ -10,6 +10,11 @@ P=~/Desktop/toefl-video; mkdir -p "$P/edit"
 python3 "$SK/scripts/doctor.py"
 ```
 
+## E · 讲解型（文章 / 论文 / 新闻 → 1–3 分钟讲解）
+
+不在本页展开：模板 `templates/explainer-douyin/`，做法、版式、截图来源、配音响度、封面合成全在 `references/08-explainer-style.md`。
+它自带配音和字幕环节，不经过下文的 `voiceover.py`。
+
 ## 屏录（没素材先录）
 
 - 目标：竖屏或接近竖屏的画面，字够大，节奏按脚本走。

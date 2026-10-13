@@ -1,12 +1,23 @@
 ---
 name: xhs-video-skills
-description: 小红书带货短视频一站式制作流程：选题钩子 → 分镜脚本 → 素材剪辑（口播 / 屏录 / 纯动效 / AI 生成）→ 女声普通话 AI 配音 + 逐句同步字幕 → 封面 → 按小红书规格导出 → 发布前合规检查。封装本机视频工具链（FFmpeg 零依赖脚本、HyperFrames 竖屏模板、video-use 自动剪辑、youtube-clipper、runcomfy 等生成模型 skill），并内置本店商品（雅思 / 托福 / GRE 写作批改考官、AI PPT Skill 选型导航）的品牌视觉与合规红线。当用户提到 小红书、带货、爆款视频、短视频、竖屏、口播、配音、旁白、TTS、屏录、剪辑、字幕、封面、导出、发笔记、xhs、daihuo，或想把某个商品做成视频时使用。
+description: 小红书 / 抖音竖屏短视频一站式制作流程，含带货片与讲解型视频（抖音风固定标题 + 3Blue1Brown 画面，论文 / 新闻 / 文章讲解默认走这条）：选题钩子 → 分镜脚本 → 素材剪辑（口播 / 屏录 / 纯动效 / AI 生成）→ 女声普通话 AI 配音 + 逐句同步字幕 → 封面 → 按小红书规格导出 → 发布前合规检查。封装本机视频工具链（FFmpeg 零依赖脚本、HyperFrames 竖屏模板、video-use 自动剪辑、youtube-clipper、runcomfy 等生成模型 skill），并内置本店商品（雅思 / 托福 / GRE 写作批改考官、AI PPT Skill 选型导航）的品牌视觉与合规红线。当用户提到 小红书、带货、爆款视频、短视频、竖屏、口播、配音、旁白、TTS、屏录、剪辑、字幕、封面、导出、发笔记、xhs、daihuo、抖音、讲解视频、科普、解读论文、3blue1brown，或想把某个商品、某篇文章做成视频时使用。
 ---
 
 # 小红书带货视频制作流程
 
 你在为一家卖 Claude Code 技能包的小红书店铺做带货短视频。店铺现有四个商品，
 品牌视觉与合规红线在 `references/06-brand-and-compliance.md`，不要另起炉灶。
+
+## 先分清做哪一类
+
+| 要做的是 | 走哪条 |
+|---|---|
+| **讲解型**：把一篇文章、论文、新闻、一个概念讲清楚（1–3 分钟） | **流水线 E**，读 `references/08-explainer-style.md`，用 `templates/explainer-douyin/`。这是讲解类的默认做法：抖音风固定标题、深紫背景、3Blue1Brown 式图表与公式、真实截图卡片、响度拉平的女声 + 背景音乐、`cover_compose.py` 出封面 |
+| **带货型**：卖店里的商品（20–45 秒） | 下面的 Step 0–6（流水线 A–D） |
+
+流水线 E 有自己的规格，与带货片不同的地方以 `references/08` 为准：时长 1–3 分钟；字幕两行宽版、每屏 ≤ 26 字；
+配音和字幕由模板里的 `tools/voice.py` + `tools/scenes.py` 生成（不走 `scripts/voiceover.py`）；
+流程是「写稿 → 出预览 → 用户确认 → 渲染」，预览就是确认环节。铁律 2、5、6、8 照常适用。
 
 ## 一次完整运行要交付什么
 
@@ -123,8 +134,9 @@ python3 <skill>/scripts/cover_frames.py <成片> -o <项目>/edit/covers --pick 
 | `burn_subs.py` | 烧录中文字幕（SRT/ASS） | `--style clean|box|accent` `--bottom 640` `--size 64` `--accent '#1B6B5F'` `--preview 5` |
 | `concat.py` | 多段统一规格后拼接 | `--fit blur` `--aspect 9:16` |
 | `cover_frames.py` | 封面候选网格 / 指定帧出封面 | `--every 2` `--pick 12.5 --aspect 3:4` |
+| `cover_compose.py` | 把画像 / 主图嵌进封面底图中央的图片位（圆角，另存不覆盖） | `底图 图 -o 封面-v2.png` `--box x,y,w,h` `--fit cover|contain` |
 | `xhs_export.py` | 最终规格化导出 + 自检 | `--aspect 9:16` `--fit blur` `--fps 30` `--crf 19` `--no-loudnorm` `--allow-silent` |
-| `selftest.py` | 自检（应看到 All 13 checks passed） | |
+| `selftest.py` | 自检（应看到 All 18 checks passed） | |
 
 ## 何时读哪份参考
 
@@ -137,6 +149,8 @@ python3 <skill>/scripts/cover_frames.py <成片> -o <项目>/edit/covers --pick 
 | 手写 ffmpeg 命令 | `references/05-ffmpeg-cookbook.md` |
 | 商品表、配色字体、合规红线 | `references/06-brand-and-compliance.md` |
 | 发布前清单 | `references/07-checklist.md` |
+| 讲解型视频的画面、标题、截图、配音响度、封面做法 | `references/08-explainer-style.md` |
+| 讲解型模板怎么改 | `templates/explainer-douyin/README.md` |
 | 分镜表格式 | `templates/脚本模板.md` |
 | HyperFrames 品牌设计规范 | `templates/DESIGN.md` |
 | 一次完整对话长什么样 | `示例/对话示例.md` |

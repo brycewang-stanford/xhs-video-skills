@@ -15,6 +15,13 @@ templates/hyperframes-vertical/.hyperframes/
 templates/hyperframes-vertical/assets/*
 !templates/hyperframes-vertical/assets/.gitkeep
 
+templates/explainer-douyin/compositions/
+templates/explainer-douyin/index.html
+templates/explainer-douyin/snapshots/
+templates/explainer-douyin/renders/
+templates/explainer-douyin/assets/voice/
+templates/explainer-douyin/assets/bgm.m4a
+
 # 视频工作区中间产物（本 skill 约定只写到 <项目>/edit/，不应进本仓库）
 edit/
 *.log
